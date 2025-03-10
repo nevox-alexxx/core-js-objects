@@ -381,72 +381,106 @@ function group(array, keySelector, valueSelector) {
  *  For more examples see unit tests.
  */
 
-const cssSelectorBuilder = {
-  element(value) {
-    if (this.elementName) {
-      throw new Error('');
+class CssSelector {
+  constructor() {
+    this.selector = '';
+    this.elementSet = false;
+    this.idSet = false;
+    this.pseudoElementSet = false;
+    this.order = [];
+  }
+
+  checkOrder(order) {
+    if (this.order.length > 0 && this.order[this.order.length - 1] > order) {
+      throw new Error(
+        'Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element'
+      );
     }
-    const newSelector = Object.create(this);
-    newSelector.elementName = value;
-    return newSelector;
-  },
+    this.order.push(order);
+  }
+
+  element(value) {
+    if (this.elementSet) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector'
+      );
+    }
+    this.checkOrder(1);
+    this.selector += value;
+    this.elementSet = true;
+    return this;
+  }
 
   id(value) {
-    if (this.elementId) {
-      throw new Error('');
+    if (this.idSet) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector'
+      );
     }
-    const newSelector = Object.create(this);
-    newSelector.elementId = `#${value}`;
-    return newSelector;
-  },
+    this.checkOrder(2);
+    this.selector += `#${value}`;
+    this.idSet = true;
+    return this;
+  }
 
   class(value) {
-    const newSelector = Object.create(this);
-    newSelector.elementClass = (this.elementClass || []).concat(`.${value}`);
-    return newSelector;
-  },
+    this.checkOrder(3);
+    this.selector += `.${value}`;
+    return this;
+  }
 
   attr(value) {
-    const newSelector = Object.create(this);
-    newSelector.elementAttr = (this.elementAttr || []).concat(`[${value}]`);
-    return newSelector;
-  },
+    this.checkOrder(4);
+    this.selector += `[${value}]`;
+    return this;
+  }
 
   pseudoClass(value) {
-    const newSelector = Object.create(this);
-    newSelector.elementPseudoClass = (this.elementPseudoClass || []).concat(`
-      :${value}`);
-    return newSelector;
-  },
+    this.checkOrder(5);
+    this.selector += `:${value}`;
+    return this;
+  }
 
   pseudoElement(value) {
-    if (this.elementPseudoElem) {
-      throw new Error('');
+    if (this.pseudoElementSet) {
+      throw new Error(
+        'Element, id and pseudo-element should not occur more then one time inside the selector'
+      );
     }
-    const newSelector = Object.create(this);
-    newSelector.elementPseudoElem = `::${value}`;
-    return newSelector;
-  },
-
-  combine(selector1, combinator, selector2) {
-    if (!selector1 || !selector2) {
-      throw new Error('Both selectors must be provided.');
-    }
-    const newSelector = Object.create(this);
-    newSelector.combinedSelector = `${selector1.stringify()} ${combinator} ${selector2.stringify()}`;
-    return newSelector;
-  },
+    this.checkOrder(6);
+    this.selector += `::${value}`;
+    this.pseudoElementSet = true;
+    return this;
+  }
 
   stringify() {
-    return (
-      (this.elementName || '') +
-      (this.elementId || '') +
-      (this.elementClass ? this.elementClass.join('') : '') +
-      (this.elementAttr ? this.elementAttr.join('') : '') +
-      (this.elementPseudoClass ? this.elementPseudoClass.join('') : '') +
-      (this.elementPseudoElem || '') +
-      (this.combinedSelector || '')
-    );
+    return this.selector;
+  }
+}
+
+const cssSelectorBuilder = {
+  element(value) {
+    return new CssSelector().element(value);
+  },
+  id(value) {
+    return new CssSelector().id(value);
+  },
+  class(value) {
+    return new CssSelector().class(value);
+  },
+  attr(value) {
+    return new CssSelector().attr(value);
+  },
+  pseudoClass(value) {
+    return new CssSelector().pseudoClass(value);
+  },
+  pseudoElement(value) {
+    return new CssSelector().pseudoElement(value);
+  },
+  combine(selector1, combinator, selector2) {
+    const combined = new CssSelector();
+    combined.selector = `${selector1.stringify()} ${combinator} ${selector2.stringify()}`;
+    return combined;
   },
 };
 
